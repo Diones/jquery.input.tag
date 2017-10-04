@@ -26,6 +26,8 @@
       clearSpaces: true
     };
 
+    let tagClasses = [];
+
     var options = $.extend({}, defaults, options);
 
     var actions = {
@@ -40,8 +42,9 @@
 
         if (actions.getTagList(targetInput).length) {
           actions.getTagList(targetInput).forEach((item, index) => { // Create Tags
-						var tag = $(`<div class="tag" data-tag-value="${item}">${item}<div class="delete" data-tag-value="${item}">+</div></div>`);
-						options.prepareTag(tag, item, index);
+          var tagClass = tagClasses[index] || '';
+          var tag = $(`<div class="tag ${tagClass}" data-tag-value="${item}">${item}<div class="delete" data-tag-value="${item}">+</div></div>`);
+          options.prepareTag(tag, item, index);
             $(targetInput).append(tag);
           });
         }
@@ -56,25 +59,30 @@
         actions.updateTagList(targetInput, value);
       },
       deleteTag: (targetInput, targetTag) => {
-        if (!$(targetInput).find('input[type="text"]').hasClass('duplicated')) {
-          let tagList = actions.getTagList(targetInput);
+        let tagList = actions.getTagList(targetInput);
 
-          if (tagList.length) {
-            if (targetTag === 'last') {
-              tagList.pop();
-              console.log(`%c${targetTag} Tag Deleted`, consoleColors.error);
-            } else {
-              console.log(`%c${tagList[targetTag]} Tag Deleted`, consoleColors.error);
-              tagList.splice(targetTag, 1);
-            }
-
-            $(targetInput).find('input[type="hidden"]').val(tagList = tagList.toString());
-            $(targetInput).find('.tag').remove();
-            actions.populate(targetInput);
+        if (tagList.length) {
+          if (targetTag === 'last') {
+            tagList.pop();
+            console.log(`%c${targetTag} Tag Deleted`, consoleColors.error);
+          } else {
+            console.log(`%c${tagList[targetTag]} Tag Deleted`, consoleColors.error);
+            tagList.splice(targetTag, 1);
           }
 
-        } else {
-          $(targetInput).find('input[type="text"]').removeClass('duplicated');
+          $(targetInput).find('input[type="hidden"]').val(tagList = tagList.toString());
+          $(targetInput).find('.tag').remove();
+          actions.populate(targetInput);
+        }
+
+        delete(tagClasses[targetTag]);
+      },
+
+      // Set tag class
+      addTagClass: (targetInput, targetTag, cssClass) => {
+        if (tag && cssClass) {
+          tagClasses[targetTag] += ' ' + cssClass;
+          console.log(`%c${tagList[targetTag]} Tag Css Class '${cssClass}' Added`, consoleColors.success);
         }
       },
 
@@ -110,12 +118,7 @@
         $(targetInput).find('input[type="hidden"]').val([...actualValue].toString()).trigger('change');
       },
       getTagList: (targetInput) => {
-
-        var tagList = $(targetInput).find('input[type="hidden"]').val().length ? $(targetInput).find('input[type="hidden"]').val().split(`${options.separator}`) : '';
-
-        if (tagList[0] === '') {
-          tagList.splice(0, 1);
-        }
+    	  var tagList = $(targetInput).find('input[type="hidden"]').val().length ? $(targetInput).find('input[type="hidden"]').val().split(`${options.separator}`) : [];
         return tagList;
       },
 
@@ -159,10 +162,19 @@
           }
         });
         $(this).on('change', '[type="hidden"]', (e) => {
+          $(this).trigger("tagUpdated.jQueryInputTags", [actions.getTagList(this)]);
           actions.display(this);
         });
         $(this).on('update.jQueryInputTags', (e) => {
-          actions.display(this)
+          actions.display(this);
+        });
+        $(this).on("tagRemove.jQueryInputTags", (e, item) => {
+          actions.deleteTag(this, item);
+          actions.display(this);
+        });
+        $(this).on("tagAddClass.jQueryInputTags", (e, item, cssClass) => {
+          actions.addTagClass(this, item, cssClass);
+          actions.display(this);
         });
       }
     };
